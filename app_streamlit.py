@@ -1,3 +1,4 @@
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -5,10 +6,7 @@ import plotly.graph_objects as go
 from sr_core import analyze, SRConfig
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
-import requests
-import json
-import gspread
-from google.oauth2.service_account import Credentials
+import requests  # For Telegram alerts
 
 st.set_page_config(page_title="S/R with RSI, MACD & Volume", layout="wide")
 st.title("📈 Support & Resistance + RSI & MACD + Volume Confirmation + Trading Signals")
@@ -20,57 +18,16 @@ refresh_count = st_autorefresh(interval=30_000, key="live_refresh")
 st.sidebar.write(f"🔄 Auto-refresh count: {refresh_count}")
 
 # --------------------------
-# Google Sheets Setup
-# --------------------------
-gcreds_json = st.secrets["g_sheet_json"]
-gcreds_dict = json.loads(gcreds_json)
-spreadsheet_id = st.secrets["g_sheet_id"]
-tab_name = st.secrets.get("g_sheet_tab", "Sheet1")
-
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = Credentials.from_service_account_info(gcreds_dict, scopes=scope)
-gc = gspread.authorize(creds)
-sh = gc.open_by_key(spreadsheet_id)
-worksheet = sh.worksheet(tab_name)
-
-def read_watchlist():
-    try:
-        values = worksheet.col_values(1)
-        return [v.strip().upper() for v in values if v.strip()]
-    except:
-        return []
-
-def add_to_watchlist(symbol):
-    symbol = symbol.strip().upper()
-    if symbol and symbol not in st.session_state.watchlist:
-        st.session_state.watchlist.append(symbol)
-        worksheet.append_row([symbol])
-
-def remove_from_watchlist(symbol):
-    symbol = symbol.strip().upper()
-    if symbol in st.session_state.watchlist:
-        st.session_state.watchlist.remove(symbol)
-        try:
-            cell = worksheet.find(symbol)
-            if cell:
-                worksheet.delete_row(cell.row)
-        except:
-            pass
-
-# --------------------------
-# Load watchlist from Google Sheets
-# --------------------------
-if "watchlist" not in st.session_state:
-    st.session_state.watchlist = read_watchlist() or ["RELIANCE.NS", "TCS.NS", "INFY.NS"]
-
-# --------------------------
 # Tabs for Home & Watchlist
 # --------------------------
 tab = st.sidebar.radio("Select View", ["Home", "Watchlist"])
 
 # --------------------------
-# Manage Watchlist
+# Watchlist management
 # --------------------------
+if "watchlist" not in st.session_state:
+    st.session_state.watchlist = ["RELIANCE.NS", "TCS.NS", "INFY.NS"]
+
 st.sidebar.subheader("Manage Watchlist")
 st.sidebar.write("Current Watchlist:")
 for sym in st.session_state.watchlist:
@@ -79,14 +36,16 @@ for sym in st.session_state.watchlist:
 # Add new symbol
 new_symbol = st.sidebar.text_input("Add Symbol (e.g., HDFCBANK.NS)")
 if st.sidebar.button("Add Symbol"):
-    add_to_watchlist(new_symbol)
-    st.success(f"Added {new_symbol.upper()} to watchlist")
+    if new_symbol.strip() and new_symbol.upper() not in st.session_state.watchlist:
+        st.session_state.watchlist.append(new_symbol.upper())
+        st.success(f"Added {new_symbol.upper()} to watchlist")
 
 # Remove a symbol
 remove_symbol = st.sidebar.selectbox("Remove Symbol", [""] + st.session_state.watchlist)
 if st.sidebar.button("Remove Symbol"):
-    remove_from_watchlist(remove_symbol)
-    st.warning(f"Removed {remove_symbol} from watchlist")
+    if remove_symbol in st.session_state.watchlist:
+        st.session_state.watchlist.remove(remove_symbol)
+        st.warning(f"Removed {remove_symbol} from watchlist")
 
 # --------------------------
 # General Inputs
@@ -98,41 +57,42 @@ interval = st.sidebar.selectbox("Select Interval", ["5m", "15m", "30m", "1h", "2
 distance = st.sidebar.number_input("SR Distance", min_value=1, max_value=50, value=5, step=1)
 tolerance = st.sidebar.number_input("SR Tolerance", min_value=0.001, max_value=0.05, value=0.01, step=0.001)
 
+# --------------------------
 # Indicator options
+# --------------------------
 st.sidebar.subheader("Indicator Options")
 show_rsi = st.sidebar.checkbox("Show RSI Chart", value=True)
 show_macd = st.sidebar.checkbox("Show MACD Chart", value=True)
 enable_sound_alert = st.sidebar.checkbox("Enable Sound Alerts", value=False)
 enable_email_alert = st.sidebar.checkbox("Enable Email Alerts", value=False)
 
-# Email credentials
-if enable_email_alert:
-    st.sidebar.subheader("Email Settings")
-    email_sender = st.sidebar.text_input("Sender Email (Outlook)", "signalvyapar@outlook.com")
-    email_password = st.sidebar.text_input("Password / App Password", type="password")
-    email_receiver = st.sidebar.text_input("Recipient Email", "shivamozarkar3131@gmail.com")
-
-# Telegram settings
-st.sidebar.subheader("📲 Telegram Alerts")
-enable_telegram_alert = st.sidebar.checkbox("Enable Telegram Alerts", value=False)
+# --------------------------
+# Telegram & Email credentials from Streamlit secrets
+# --------------------------
 telegram_token = st.secrets.get("telegram_token", "")
 telegram_chat_id = st.secrets.get("telegram_chat_id", "")
+email_sender = st.secrets.get("email_sender", "")
+email_password = st.secrets.get("email_password", "")
+email_receiver = st.secrets.get("email_receiver", "")
 
-# Telegram test button
+# --------------------------
+# Telegram test alert button
+# --------------------------
+st.sidebar.subheader("📲 Test Telegram Alert")
 if st.sidebar.button("Send Test Telegram Alert"):
     if telegram_token and telegram_chat_id:
         try:
             url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
-            payload = {"chat_id": telegram_chat_id, "text": "✅ Test Telegram Alert from S/R App!"}
+            payload = {"chat_id": telegram_chat_id, "text": "✅ Chaltay Re Bhawa Barobr !!"}
             requests.post(url, data=payload)
             st.sidebar.success("Test Telegram alert sent successfully!")
         except Exception as e:
             st.sidebar.error(f"Failed to send test alert: {e}")
     else:
-        st.sidebar.warning("Please provide Bot Token and Chat ID in Streamlit secrets!")
+        st.sidebar.warning("Please set Telegram credentials in Streamlit secrets.toml!")
 
 # --------------------------
-# RSI & MACD Parameters
+# Indicator Parameters
 # --------------------------
 st.sidebar.subheader("Indicator Parameters")
 rsi_period = st.sidebar.number_input("RSI Period", min_value=5, max_value=50, value=14, step=1)
@@ -140,12 +100,39 @@ macd_fast = st.sidebar.number_input("MACD Fast EMA", min_value=5, max_value=50, 
 macd_slow = st.sidebar.number_input("MACD Slow EMA", min_value=10, max_value=100, value=26, step=1)
 macd_signal = st.sidebar.number_input("MACD Signal EMA", min_value=5, max_value=30, value=9, step=1)
 
-# Volume filter
+# --------------------------
+# Volume Confirmation Toggle
+# --------------------------
 st.sidebar.subheader("Volume Confirmation")
 enable_volume_filter = st.sidebar.checkbox("Enable Volume Confirmation for Signals", value=True)
 
 # --------------------------
-# Email and Telegram functions
+# CSS & JS for pop-up alerts
+# --------------------------
+st.markdown("""
+<style>
+@keyframes blink { 0% { background-color: inherit; } 50% { background-color: yellow; } 100% { background-color: inherit; } }
+.blink { animation: blink 1s linear 2; }
+#popup-alert {
+    position: fixed; top: 20px; right: 20px;
+    background-color: #ffcc00; color: black; padding: 15px;
+    border-radius: 10px; box-shadow: 2px 2px 10px rgba(0,0,0,0.3);
+    z-index: 9999; font-weight: bold; display: none;
+}
+</style>
+<script>
+function showPopup(message) {
+    var popup = document.getElementById('popup-alert');
+    popup.innerText = message;
+    popup.style.display = 'block';
+    setTimeout(function() { popup.style.display = 'none'; }, 5000);
+}
+</script>
+<div id="popup-alert"></div>
+""", unsafe_allow_html=True)
+
+# --------------------------
+# Email alert function
 # --------------------------
 def send_email_alert(subject, body, from_email, password, to_email):
     from email.mime.text import MIMEText
@@ -163,6 +150,9 @@ def send_email_alert(subject, body, from_email, password, to_email):
     except Exception as e:
         st.error(f"Email send failed: {e}")
 
+# --------------------------
+# Telegram alert function
+# --------------------------
 def send_telegram_alert(message, token, chat_id):
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -190,25 +180,53 @@ def show_stock(symbol, hide_sr=False):
         if symbol not in st.session_state.last_alert:
             st.session_state.last_alert[symbol] = None
 
+        if not hide_sr:
+            st.write("📊 Support & Resistance Levels")
+            st.dataframe(pd.DataFrame(sr))
+
         st.write("🚨 Live Alerts")
         for sig in signals:
             alert_text = f"{sig['signal']} Signal! Price: {sig['price']}\nReason: {sig['reason']}"
             if sig.get("Volume"):
                 alert_text += f"\nVolume: {sig['Volume']:.0f}"
+
             is_new = sig['signal'] != st.session_state.last_alert.get(symbol)
             color = "green" if sig["signal"] == "BUY" else "red" if sig["signal"] == "SELL" else "blue"
 
             if is_new:
-                st.markdown(f"<div style='color:{color}; padding:10px'>{alert_text}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='blink' style='color:{color}; padding:10px; border-radius:5px; background-color:white'>{alert_text}</div>", unsafe_allow_html=True)
 
                 if sig["signal"] in ["BUY", "SELL"]:
+                    components.html(f"<script>showPopup('{alert_text}');</script>", height=0)
+
+                    if enable_sound_alert:
+                        components.html("""<audio autoplay><source src="https://www.soundjay.com/buttons/sounds/beep-07.mp3" type="audio/mpeg"></audio>""", height=0)
+
                     if enable_email_alert and email_sender and email_password and email_receiver:
-                        send_email_alert(f"{sig['signal']} Alert for {symbol}", alert_text,
-                                         email_sender, email_password, email_receiver)
-                    if enable_telegram_alert and telegram_token and telegram_chat_id:
-                        send_telegram_alert(f"🚨 {sig['signal']} Alert for {symbol}\n{alert_text}",
-                                            telegram_token, telegram_chat_id)
+                        send_email_alert(subject=f"{sig['signal']} Alert for {symbol}", body=alert_text,
+                                         from_email=email_sender, password=email_password, to_email=email_receiver)
+
+                    if telegram_token and telegram_chat_id:
+                        send_telegram_alert(f"🚨 {sig['signal']} Alert for {symbol}\n{alert_text}", telegram_token, telegram_chat_id)
+
                 st.session_state.last_alert[symbol] = sig['signal']
+            else:
+                st.markdown(f"<div style='color:gray; padding:10px; border-radius:5px; background-color:#f5f5f5'>{alert_text}</div>", unsafe_allow_html=True)
+
+        if not hide_sr:
+            if show_rsi:
+                st.subheader("📊 RSI Indicator")
+                fig_rsi = go.Figure()
+                fig_rsi.add_trace(go.Scatter(x=df.index, y=df["RSI"], mode="lines", name="RSI"))
+                fig_rsi.add_hline(y=70, line_dash="dot", line_color="red")
+                fig_rsi.add_hline(y=30, line_dash="dot", line_color="green")
+                st.plotly_chart(fig_rsi, use_container_width=True)
+            if show_macd:
+                st.subheader("📊 MACD Indicator")
+                fig_macd = go.Figure()
+                fig_macd.add_trace(go.Scatter(x=df.index, y=df["MACD"], mode="lines", name="MACD"))
+                fig_macd.add_trace(go.Scatter(x=df.index, y=df["MACD_Signal"], mode="lines", name="Signal"))
+                st.plotly_chart(fig_macd, use_container_width=True)
 
     except Exception as e:
         st.error(f"Error fetching {symbol}: {e}")
