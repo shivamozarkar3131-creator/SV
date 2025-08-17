@@ -19,10 +19,8 @@ class SRConfig:
 def find_swings(df, cfg):
     highs = pd.to_numeric(df['High'], errors='coerce').dropna().values
     lows = pd.to_numeric(df['Low'], errors='coerce').dropna().values
-
     peak_idx, _ = find_peaks(highs, distance=cfg.distance)
     trough_idx, _ = find_peaks(-lows, distance=cfg.distance)
-
     return peak_idx, trough_idx
 
 # ------------------------------
@@ -45,9 +43,9 @@ def compute_sr_levels(df, cfg):
 # ------------------------------
 def compute_rsi(series, period=14):
     delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / loss
+    gain = (delta.where(delta > 0, 0)).rolling(window=period, min_periods=1).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period, min_periods=1).mean()
+    rs = gain / (loss + 1e-6)
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
@@ -70,7 +68,6 @@ def generate_signals(df, sr_levels, use_volume=False):
     macd_signal = last_row.get("MACD_Signal", None)
     close_price = last_row["Close"]
     current_volume = last_row.get("Volume", None)
-
     avg_volume = df['Volume'].rolling(20).mean().iloc[-1] if 'Volume' in df.columns else None
     signal_generated = False
 
@@ -127,20 +124,23 @@ def analyze(symbol=None, period=None, interval=None, csv_path=None, df=None, cfg
     if cfg is None:
         cfg = SRConfig()
 
+    # Fetch or use existing data
     if df is not None:
         data = df.copy()
     elif csv_path:
         data = pd.read_csv(csv_path)
     elif symbol is not None:
-        data = yf.download(symbol, period=period or "6mo", interval=interval or "5d", auto_adjust=True)
+        data = yf.download(symbol, period=period or "6mo", interval=interval or "1d", auto_adjust=True)
         if data.empty:
             raise ValueError("No data fetched from yfinance. Check symbol or internet.")
     else:
         raise ValueError("Must provide df, csv_path, or symbol to analyze.")
 
+    # Flatten MultiIndex columns if any
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in data.columns]
 
+    # Standardize column names
     col_map = {}
     for col in data.columns:
         col_lower = col.lower()
@@ -151,14 +151,17 @@ def analyze(symbol=None, period=None, interval=None, csv_path=None, df=None, cfg
         elif 'volume' in col_lower: col_map[col] = 'Volume'
     data = data.rename(columns=col_map)
 
+    # Ensure required columns exist
     required_cols = {'High', 'Low', 'Open', 'Close', 'Volume'}
     if not required_cols.issubset(data.columns):
         raise ValueError(f"Data must contain columns: {required_cols}")
 
+    # Convert columns to numeric
     for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
         data[col] = pd.to_numeric(data[col], errors='coerce')
     data.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'], inplace=True)
 
+    # Ensure datetime index
     if not isinstance(data.index, pd.DatetimeIndex):
         if 'Date' in data.columns:
             data['Date'] = pd.to_datetime(data['Date'])
@@ -166,6 +169,7 @@ def analyze(symbol=None, period=None, interval=None, csv_path=None, df=None, cfg
         else:
             data.index = pd.to_datetime(data.index)
 
+    # Compute SR, RSI, MACD
     sr = compute_sr_levels(data, cfg)
     data["RSI"] = compute_rsi(data["Close"], period=rsi_period)
     data["MACD"], data["MACD_Signal"] = compute_macd(data["Close"],
@@ -173,5 +177,6 @@ def analyze(symbol=None, period=None, interval=None, csv_path=None, df=None, cfg
                                                      slow=macd_slow,
                                                      signal=macd_signal)
 
+    # Generate signals
     signals = generate_signals(data, sr, use_volume=use_volume)
     return sr, data, signals
