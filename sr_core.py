@@ -59,9 +59,8 @@ def compute_macd(series, fast=12, slow=26, signal=9):
 # ------------------------------
 # Generate Live Trading Signals
 # ------------------------------
-def generate_signals(df, sr_levels, use_volume=False, last_signal=None):
+def generate_signals(df, sr_levels, use_volume=False):
     signals = []
-    last_signal_text = last_signal
     last_row = df.iloc[-1]
 
     rsi = last_row.get("RSI", None)
@@ -77,37 +76,33 @@ def generate_signals(df, sr_levels, use_volume=False, last_signal=None):
         if lvl["type"] == "support" and close_price <= lvl["price"] * 1.01:
             if rsi is not None and macd is not None and macd_signal is not None:
                 if rsi < 30 and macd > macd_signal and (not use_volume or (current_volume and avg_volume and current_volume > avg_volume)):
-                    if last_signal_text != "BUY":
-                        signals.append({
-                            "signal": "BUY",
-                            "reason": "RSI oversold + near support + MACD bullish" + (" + Volume confirmation" if use_volume else ""),
-                            "price": close_price,
-                            "time": last_row.name,
-                            "RSI": rsi,
-                            "MACD": macd,
-                            "Volume": current_volume
-                        })
-                        signal_generated = True
-                        last_signal_text = "BUY"
+                    signals.append({
+                        "signal": "BUY",
+                        "reason": "RSI oversold + near support + MACD bullish" + (" + Volume confirmation" if use_volume else ""),
+                        "price": close_price,
+                        "time": last_row.name,
+                        "RSI": rsi,
+                        "MACD": macd,
+                        "Volume": current_volume
+                    })
+                    signal_generated = True
 
         # Resistance / SELL
         if lvl["type"] == "resistance" and close_price >= lvl["price"] * 0.99:
             if rsi is not None and macd is not None and macd_signal is not None:
                 if rsi > 70 and macd < macd_signal and (not use_volume or (current_volume and avg_volume and current_volume > avg_volume)):
-                    if last_signal_text != "SELL":
-                        signals.append({
-                            "signal": "SELL",
-                            "reason": "RSI overbought + near resistance + MACD bearish" + (" + Volume confirmation" if use_volume else ""),
-                            "price": close_price,
-                            "time": last_row.name,
-                            "RSI": rsi,
-                            "MACD": macd,
-                            "Volume": current_volume
-                        })
-                        signal_generated = True
-                        last_signal_text = "SELL"
+                    signals.append({
+                        "signal": "SELL",
+                        "reason": "RSI overbought + near resistance + MACD bearish" + (" + Volume confirmation" if use_volume else ""),
+                        "price": close_price,
+                        "time": last_row.name,
+                        "RSI": rsi,
+                        "MACD": macd,
+                        "Volume": current_volume
+                    })
+                    signal_generated = True
 
-    # Only add HOLD if no BUY/SELL signals generated
+    # Only add HOLD if no BUY/SELL signals
     if not signal_generated:
         signals.append({
             "signal": "HOLD",
@@ -119,14 +114,13 @@ def generate_signals(df, sr_levels, use_volume=False, last_signal=None):
             "Volume": current_volume
         })
 
-    return signals, last_signal_text
+    return signals
 
 # ------------------------------
 # Main analysis function
 # ------------------------------
 def analyze(symbol=None, period=None, interval=None, csv_path=None, df=None, cfg=None,
-            rsi_period=14, macd_fast=12, macd_slow=26, macd_signal=9, use_volume=False,
-            last_signal=None):
+            rsi_period=14, macd_fast=12, macd_slow=26, macd_signal=9, use_volume=False):
     if cfg is None:
         cfg = SRConfig()
 
@@ -184,5 +178,5 @@ def analyze(symbol=None, period=None, interval=None, csv_path=None, df=None, cfg
                                                      signal=macd_signal)
 
     # Generate signals
-    signals, last_signal_out = generate_signals(data, sr, use_volume=use_volume, last_signal=last_signal)
-    return sr, data, signals, last_signal_out
+    signals = generate_signals(data, sr, use_volume=use_volume)
+    return sr, data, signals
