@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from sr_core import analyze, SRConfig
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
-import requests  # ✅ For Telegram alerts
+import requests  # For Telegram alerts
 
 st.set_page_config(page_title="S/R with RSI, MACD & Volume", layout="wide")
 st.title("📈 Support & Resistance + RSI & MACD + Volume Confirmation + Trading Signals")
@@ -56,42 +56,43 @@ interval = st.sidebar.selectbox("Select Interval", ["5m", "15m", "30m", "1h", "2
 distance = st.sidebar.number_input("SR Distance", min_value=1, max_value=50, value=5, step=1)
 tolerance = st.sidebar.number_input("SR Tolerance", min_value=0.001, max_value=0.05, value=0.01, step=0.001)
 
+# --------------------------
 # Indicator options
+# --------------------------
 st.sidebar.subheader("Indicator Options")
 show_rsi = st.sidebar.checkbox("Show RSI Chart", value=True)
 show_macd = st.sidebar.checkbox("Show MACD Chart", value=True)
 enable_sound_alert = st.sidebar.checkbox("Enable Sound Alerts", value=False)
 enable_email_alert = st.sidebar.checkbox("Enable Email Alerts", value=False)
 
-# Email credentials
-if enable_email_alert:
-    st.sidebar.subheader("Email Settings")
-    email_sender = st.sidebar.text_input("Sender Email (Outlook)", "signalvyapar@outlook.com")
-    email_password = st.sidebar.text_input("Password / App Password", type="password")
-    email_receiver = st.sidebar.text_input("Recipient Email", "shivamozarkar3131@gmail.com")
+# --------------------------
+# Telegram & Email credentials from Streamlit secrets
+# --------------------------
+telegram_token = st.secrets.get("telegram_token", "")
+telegram_chat_id = st.secrets.get("telegram_chat_id", "")
+email_sender = st.secrets.get("email_sender", "")
+email_password = st.secrets.get("email_password", "")
+email_receiver = st.secrets.get("email_receiver", "")
 
 # --------------------------
-# Telegram settings
+# Telegram test alert button
 # --------------------------
-st.sidebar.subheader("📲 Telegram Alerts")
-enable_telegram_alert = st.sidebar.checkbox("Enable Telegram Alerts", value=False)
-telegram_token = st.sidebar.text_input("Telegram Bot Token", type="password")
-telegram_chat_id = st.sidebar.text_input("Telegram Chat ID")
-
-# Add Telegram test button
+st.sidebar.subheader("📲 Test Telegram Alert")
 if st.sidebar.button("Send Test Telegram Alert"):
     if telegram_token and telegram_chat_id:
         try:
             url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
-            payload = {"chat_id": telegram_chat_id, "text": "✅ Chaltay re bhava barobr"}
+            payload = {"chat_id": telegram_chat_id, "text": "✅ Chaltay Re Bhawa Barobr !!"}
             requests.post(url, data=payload)
             st.sidebar.success("Test Telegram alert sent successfully!")
         except Exception as e:
             st.sidebar.error(f"Failed to send test alert: {e}")
     else:
-        st.sidebar.warning("Please provide both Bot Token and Chat ID!")
+        st.sidebar.warning("Please set Telegram credentials in Streamlit secrets.toml!")
 
-# RSI & MACD Parameters
+# --------------------------
+# Indicator Parameters
+# --------------------------
 st.sidebar.subheader("Indicator Parameters")
 rsi_period = st.sidebar.number_input("RSI Period", min_value=5, max_value=50, value=14, step=1)
 macd_fast = st.sidebar.number_input("MACD Fast EMA", min_value=5, max_value=50, value=12, step=1)
@@ -204,7 +205,7 @@ def show_stock(symbol, hide_sr=False):
                         send_email_alert(subject=f"{sig['signal']} Alert for {symbol}", body=alert_text,
                                          from_email=email_sender, password=email_password, to_email=email_receiver)
 
-                    if enable_telegram_alert and telegram_token and telegram_chat_id:
+                    if telegram_token and telegram_chat_id:
                         send_telegram_alert(f"🚨 {sig['signal']} Alert for {symbol}\n{alert_text}", telegram_token, telegram_chat_id)
 
                 st.session_state.last_alert[symbol] = sig['signal']
