@@ -26,7 +26,7 @@ tab = st.sidebar.radio("Select View", ["Home", "Watchlist"])
 # Watchlist management
 # --------------------------
 if "watchlist" not in st.session_state:
-    st.session_state.watchlist = ["TATAMOTORS.NS", "IDFCFIRSTB.NS", "WIPRO.NS", "NBCC.NS", "NBCC.NS", "ZENSARTECH.NS", "EPL.NS", "BERGEPAINT.NS", "RECLTD.NS", "AARON.NS"]
+    st.session_state.watchlist = ["TATAMOTORS.NS", "IDFCFIRSTB.NS", "WIPRO.NS", "NBCC.NS", "ZENSARTECH.NS", "EPL.NS", "BERGEPAINT.NS", "RECLTD.NS", "AARON.NS"]
 
 st.sidebar.subheader("Manage Watchlist")
 st.sidebar.write("Current Watchlist:")
