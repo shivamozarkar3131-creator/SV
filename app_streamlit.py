@@ -207,6 +207,7 @@ def show_stock(symbol, hide_sr=False):
                                          from_email=email_sender, password=email_password, to_email=email_receiver)
                     if telegram_token and telegram_chat_id:
                         send_telegram_alert(
+                            f"📊 v1.1"
                             f"🚨 {sig['signal']} Alert for {symbol}\n"
                             f"⏳ Period: {period}, Interval: {interval}\n"
                             f"{alert_text}",
