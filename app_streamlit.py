@@ -83,7 +83,7 @@ if st.sidebar.button("Send Test Telegram Alert"):
     if telegram_token and telegram_chat_id:
         try:
             url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
-            payload = {"chat_id": telegram_chat_id, "text": "✅ Chaltay Re Bhawa Barobr !!"}
+            payload = {"chat_id": telegram_chat_id, "text": "✅ Chaltay Re Bhawa Barobr !! - v1.1"}
             requests.post(url, data=payload)
             st.sidebar.success("Test Telegram alert sent successfully!")
         except Exception as e:
