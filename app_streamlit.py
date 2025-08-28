@@ -1,4 +1,3 @@
-
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -6,8 +5,29 @@ import plotly.graph_objects as go
 from sr_core import analyze, SRConfig
 import streamlit.components.v1 as components
 from streamlit_autorefresh import st_autorefresh
-import requests  # For Telegram alerts
+import requests
+import json
+import os
 
+# --------------------------
+# Watchlist persistence
+# --------------------------
+WATCHLIST_FILE = "watchlist.json"
+
+def load_watchlist():
+    if os.path.exists(WATCHLIST_FILE):
+        with open(WATCHLIST_FILE, "r") as f:
+            return json.load(f)
+    return ["TATAMOTORS.NS", "IDFCFIRSTB.NS", "WIPRO.NS", "NBCC.NS", 
+            "ZENSARTECH.NS", "EPL.NS", "BERGEPAINT.NS", "RECLTD.NS", "AARON.NS"]
+
+def save_watchlist(watchlist):
+    with open(WATCHLIST_FILE, "w") as f:
+        json.dump(watchlist, f)
+
+# --------------------------
+# Streamlit page config
+# --------------------------
 st.set_page_config(page_title="S/R with RSI, MACD & Volume", layout="wide")
 st.title("📈 Support & Resistance + RSI & MACD + Volume Confirmation + Trading Signals")
 
@@ -26,7 +46,7 @@ tab = st.sidebar.radio("Select View", ["Home", "Watchlist"])
 # Watchlist management
 # --------------------------
 if "watchlist" not in st.session_state:
-    st.session_state.watchlist = ["TATAMOTORS.NS", "IDFCFIRSTB.NS", "WIPRO.NS", "NBCC.NS", "ZENSARTECH.NS", "EPL.NS", "BERGEPAINT.NS", "RECLTD.NS", "AARON.NS"]
+    st.session_state.watchlist = load_watchlist()
 
 st.sidebar.subheader("Manage Watchlist")
 st.sidebar.write("Current Watchlist:")
@@ -38,6 +58,7 @@ new_symbol = st.sidebar.text_input("Add Symbol (e.g., HDFCBANK.NS)")
 if st.sidebar.button("Add Symbol"):
     if new_symbol.strip() and new_symbol.upper() not in st.session_state.watchlist:
         st.session_state.watchlist.append(new_symbol.upper())
+        save_watchlist(st.session_state.watchlist)
         st.success(f"Added {new_symbol.upper()} to watchlist")
 
 # Remove a symbol
@@ -45,6 +66,7 @@ remove_symbol = st.sidebar.selectbox("Remove Symbol", [""] + st.session_state.wa
 if st.sidebar.button("Remove Symbol"):
     if remove_symbol in st.session_state.watchlist:
         st.session_state.watchlist.remove(remove_symbol)
+        save_watchlist(st.session_state.watchlist)
         st.warning(f"Removed {remove_symbol} from watchlist")
 
 # --------------------------
