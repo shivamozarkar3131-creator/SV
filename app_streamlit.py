@@ -228,14 +228,17 @@ def show_stock(symbol, hide_sr=False):
                         send_email_alert(subject=f"{sig['signal']} Alert for {symbol}", body=alert_text,
                                          from_email=email_sender, password=email_password, to_email=email_receiver)
                     if telegram_token and telegram_chat_id:
-                        send_telegram_alert(
-                            f"📊 v1.1"
-                            f"🚨 {sig['signal']} Alert for {symbol}\n"
-                            f"⏳ Period: {period}, Interval: {interval}\n"
-                            f"{alert_text}",
-                            telegram_token,
-                            telegram_chat_id
+                            volume_status = "CONFIRMED" if enable_volume_filter else "NOT CONFIRMED"
+                            send_telegram_alert(
+                                f"📊 v1.1\n"
+                                f"🚨 {sig['signal']} Alert for {symbol}\n"
+                                f"⏳ Period: {period}, Interval: {interval}\n"
+                                f"Volume: {volume_status}\n"
+                                f"{alert_text}",
+                                telegram_token,
+                                telegram_chat_id
                             )
+
 
                 st.session_state.last_alert[symbol] = sig['signal']
             else:
