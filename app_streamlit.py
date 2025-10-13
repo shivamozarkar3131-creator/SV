@@ -18,8 +18,7 @@ def load_watchlist():
     if os.path.exists(WATCHLIST_FILE):
         with open(WATCHLIST_FILE, "r") as f:
             return json.load(f)
-    return ["TATAMOTORS.NS", "IDFCFIRSTB.NS", "WIPRO.NS", "NBCC.NS", 
-            "ZENSARTECH.NS", "EPL.NS", "BERGEPAINT.NS", "RECLTD.NS", "AARON.NS"]
+    return ["TATAMOTORS.NS", "IDFCFIRSTB.NS", "WIPRO.NS"]
 
 def save_watchlist(watchlist):
     with open(WATCHLIST_FILE, "w") as f:
