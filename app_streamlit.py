@@ -125,7 +125,7 @@ macd_signal = st.sidebar.number_input("MACD Signal EMA", min_value=5, max_value=
 # Volume Confirmation Toggle
 # --------------------------
 st.sidebar.subheader("Volume Confirmation")
-enable_volume_filter = st.sidebar.checkbox("Enable Volume Confirmation for Signals", value=True)
+enable_volume_filter = st.sidebar.checkbox("Enable Volume Confirmation for Signals", value=False)
 
 # --------------------------
 # CSS & JS for pop-up alerts
