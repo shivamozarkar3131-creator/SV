@@ -74,7 +74,7 @@ if st.sidebar.button("Remove Symbol"):
 st.sidebar.subheader("Analysis Options")
 symbol_input = st.sidebar.text_input("Stock Symbol for Home", "RELIANCE.NS")
 period = st.sidebar.selectbox("Select Period", ["1mo", "3mo", "6mo", "1y", "2y"])
-interval = st.sidebar.selectbox("Select Interval", ["5m", "15m", "30m", "1h", "2h", "1d"])
+interval = st.sidebar.selectbox("Select Interval", ["1h", "15m", "30m", "5m", "2h", "1d"])
 distance = st.sidebar.number_input("SR Distance", min_value=1, max_value=50, value=5, step=1)
 tolerance = st.sidebar.number_input("SR Tolerance", min_value=0.001, max_value=0.05, value=0.01, step=0.001)
 
