@@ -12,3 +12,6 @@ requests
 plotly
 gspread
 google-auth
+streamlit
+streamlit-authenticator
+PyYAML
