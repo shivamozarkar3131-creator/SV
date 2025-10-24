@@ -14,4 +14,9 @@ gspread
 google-auth
 streamlit
 streamlit-authenticator
-PyYAML
+yfinance
+pandas
+plotly
+requests
+pyyaml
+
