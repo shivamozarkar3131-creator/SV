@@ -28,7 +28,7 @@ def save_watchlist(watchlist):
 # Streamlit page config
 # --------------------------
 st.set_page_config(page_title="S/R with RSI, MACD & Volume", layout="wide")
-st.title("📈 Support & Resistance + RSI & MACD + Volume Confirmation + Trading Signals")
+st.title("📈 Signalv14")
 
 # --------------------------
 # Auto-refresh every 30 seconds
